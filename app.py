@@ -5,9 +5,9 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 
 # Load data
-@st.cache
 def load_data(file_path):
     return pd.read_excel(file_path)
+
 
 # Merge data
 def merge_data(company_data, iip_data, macro_data):
