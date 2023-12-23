@@ -7,7 +7,11 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 # Load data
 def load_data(file_path):
     if file_path is not None:
-        return pd.read_excel(file_path)
+        try:
+            return pd.read_excel(file_path)
+        except pd.errors.ParserError:
+            st.error("Error: Invalid Excel file. Please upload a valid Excel file.")
+            return pd.DataFrame()  # Return an empty DataFrame in case of an error
     else:
         return pd.DataFrame()  # Return an empty DataFrame if file_path is None
 
