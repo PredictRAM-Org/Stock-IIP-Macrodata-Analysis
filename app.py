@@ -1,16 +1,21 @@
-import os
 import streamlit as st
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-import matplotlib.pyplot as plt
 
 # Function to load all JSON files from a folder
 def load_json_files_from_folder(folder_path):
     json_files = [f for f in os.listdir(folder_path) if f.endswith('.json')]
     dataframes = [pd.read_json(os.path.join(folder_path, file)) for file in json_files]
     return pd.concat(dataframes, ignore_index=True)
+
+# Function to upload and read stock data from Excel file
+def upload_and_read_stock_data():
+    uploaded_file = st.file_uploader("Upload stock data Excel file", type=["xlsx"])
+    if uploaded_file is not None:
+        stock_data = pd.read_excel(uploaded_file)
+        return stock_data
+    else:
+        st.warning("Please upload a stock data Excel file.")
+        return pd.DataFrame()
 
 # Load stock income statement data from the 'stock_data' folder
 try:
@@ -44,11 +49,14 @@ st.write(iip_data.head())
 st.write("Available Macro Data:")
 st.write(macro_data.head())
 
+# Display stock data based on user upload
+stock_data_upload = upload_and_read_stock_data()
+
 # Check if data loading was successful before proceeding
-if not (stock_data.empty or iip_data.empty or macro_data.empty):
+if not (stock_data.empty or iip_data.empty or macro_data.empty or stock_data_upload.empty):
     # Merge stock data with IIP data on date
     try:
-        merged_data = pd.merge(stock_data, iip_data, on='Date', how='inner')
+        merged_data = pd.merge(stock_data_upload, iip_data, on='Date', how='inner')
     except Exception as e:
         st.error(f"Error merging stock and IIP data: {e}")
         merged_data = pd.DataFrame()
@@ -75,10 +83,6 @@ if not (stock_data.empty or iip_data.empty or macro_data.empty):
 
         # Split data into training and testing sets
         X_train, X_test, y_train, y_test = train_test_split(features, final_data[target_columns], test_size=0.2, random_state=42)
-
-        # Display information about training data
-        st.write("Training Data:")
-        st.write(X_train.head())
 
         # Linear Regression
         lr_model = LinearRegression()
