@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -5,12 +6,19 @@ from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 import matplotlib.pyplot as plt
 
-# Load stock income statement data
+# Function to load all JSON files from a folder
+def load_json_files_from_folder(folder_path):
+    json_files = [f for f in os.listdir(folder_path) if f.endswith('.json')]
+    dataframes = [pd.read_json(os.path.join(folder_path, file)) for file in json_files]
+    return pd.concat(dataframes, ignore_index=True)
+
+# Load stock income statement data from the 'stock_data' folder
 try:
-    stock_data = pd.read_json('stock_income_data.json')
+    stock_data_folder_path = 'stock_data'
+    stock_data = load_json_files_from_folder(stock_data_folder_path)
 except Exception as e:
     st.error(f"Error loading stock data: {e}")
-    stock_data = pd.DataFrame()  # Initialize an empty DataFrame to avoid further issues
+    stock_data = pd.DataFrame()
 
 # Load IIP data
 try:
