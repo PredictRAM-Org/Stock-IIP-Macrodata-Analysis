@@ -6,7 +6,10 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 
 # Load data
 def load_data(file_path):
-    return pd.read_excel(file_path)
+    if file_path is not None:
+        return pd.read_excel(file_path)
+    else:
+        return pd.DataFrame()  # Return an empty DataFrame if file_path is None
 
 
 # Merge data
