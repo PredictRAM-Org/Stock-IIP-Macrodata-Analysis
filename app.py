@@ -1,119 +1,94 @@
 import streamlit as st
 import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.metrics import mean_squared_error
+import numpy as np
 
-# Function to load all JSON files from a folder
-def load_json_files_from_folder(folder_path):
-    json_files = [f for f in os.listdir(folder_path) if f.endswith('.json')]
-    dataframes = [pd.read_json(os.path.join(folder_path, file)) for file in json_files]
-    return pd.concat(dataframes, ignore_index=True)
+# Function to load and preprocess data
+def load_data(file_path):
+    data = pd.read_excel(file_path)
+    return data
 
-# Function to upload and read stock data from Excel file
-def upload_and_read_stock_data():
-    uploaded_file = st.file_uploader("Upload stock data Excel file", type=["xlsx"])
-    if uploaded_file is not None:
-        stock_data = pd.read_excel(uploaded_file)
-        return stock_data
-    else:
-        st.warning("Please upload a stock data Excel file.")
-        return pd.DataFrame()
+# Function to merge economic data with company-specific data
+def merge_data(company_data, economic_data, macro_data):
+    merged_data = pd.merge(company_data, economic_data, on='Date', how='left')
+    merged_data = pd.merge(merged_data, macro_data, on='Reporting Date', how='left')
+    return merged_data
 
-# Load stock income statement data from the 'stock_data' folder
-try:
-    stock_data_folder_path = 'stock_data'
-    stock_data = load_json_files_from_folder(stock_data_folder_path)
-except Exception as e:
-    st.error(f"Error loading stock data: {e}")
-    stock_data = pd.DataFrame()
+# Function to train and evaluate regression models
+def train_models(X_train, y_train, X_test, y_test):
+    models = {
+        'Linear Regression': LinearRegression(),
+        'Random Forest Regression': RandomForestRegressor(),
+        'Gradient Boosting Regression': GradientBoostingRegressor()
+    }
 
-# Load IIP data
-try:
-    iip_data = pd.read_csv('IIP.csv')
-except Exception as e:
-    st.error(f"Error loading IIP data: {e}")
-    iip_data = pd.DataFrame()
+    results = {}
 
-# Load macro data
-try:
-    macro_data = pd.read_excel('macro_data.xlsx')
-except Exception as e:
-    st.error(f"Error loading macro data: {e}")
-    macro_data = pd.DataFrame()
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        predictions = model.predict(X_test)
+        mse = mean_squared_error(y_test, predictions)
+        results[name] = {'model': model, 'mse': mse}
 
-# Display information about available data
-st.write("Available Stock Data:")
-st.write(stock_data.head())
+    return results
 
-st.write("Available IIP Data:")
-st.write(iip_data.head())
+# Function to make predictions
+def make_predictions(model, input_data):
+    return model.predict([input_data])
 
-st.write("Available Macro Data:")
-st.write(macro_data.head())
+# Streamlit app
+def main():
+    st.title("Revenue Prediction Dashboard")
 
-# Display stock data based on user upload
-stock_data_upload = upload_and_read_stock_data()
+    # Upload files
+    st.sidebar.header("Upload Files")
+    company_file = st.sidebar.file_uploader("Upload Company Data (xlsx)", type=["xlsx"])
+    iip_file = st.sidebar.file_uploader("Upload IIP Data (csv)", type=["csv"])
+    macro_file = st.sidebar.file_uploader("Upload Macro Data (xlsx)", type=["xlsx"])
 
-# Check if data loading was successful before proceeding
-if not (stock_data.empty or iip_data.empty or macro_data.empty or stock_data_upload.empty):
-    # Merge stock data with IIP data on date
-    try:
-        merged_data = pd.merge(stock_data_upload, iip_data, on='Date', how='inner')
-    except Exception as e:
-        st.error(f"Error merging stock and IIP data: {e}")
-        merged_data = pd.DataFrame()
+    # Load data
+    if company_file is not None and iip_file is not None and macro_file is not None:
+        company_data = load_data(company_file)
+        iip_data = load_data(iip_file)
+        macro_data = load_data(macro_file)
 
-    # Merge merged_data with macro data on Reporting Date
-    try:
-        final_data = pd.merge(merged_data, macro_data, left_on='Date', right_on='Reporting Date', how='inner')
-    except Exception as e:
-        st.error(f"Error merging final data: {e}")
-        final_data = pd.DataFrame()
+        # Merge data
+        merged_data = merge_data(company_data, iip_data, macro_data)
 
-    # Check if merging was successful before proceeding
-    if not (merged_data.empty or final_data.empty):
-        # Feature engineering - add more features based on relationships between economic indicators and income statements
-        # ...
+        # Select columns for analysis
+        selected_columns = st.multiselect("Select Columns for Analysis", merged_data.columns)
 
-        # User input for upcoming expected values
-        user_input_iip = st.number_input("Enter upcoming IIP value", value=0.0)
-        user_input_macro = st.number_input("Enter upcoming macro data value", value=0.0)
+        # Train-test split
+        X = merged_data[selected_columns].dropna()
+        y = merged_data['Total Revenue/Income'].loc[X.index]
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-        # Predictive modeling
-        features = final_data.drop(['Total Revenue', 'Total Operating Expense', 'EBITDA', 'Net Income'], axis=1)
-        target_columns = ['Total Revenue', 'Total Operating Expense', 'EBITDA', 'Net Income']
+        # Train models
+        results = train_models(X_train, y_train, X_test, y_test)
 
-        # Split data into training and testing sets
-        X_train, X_test, y_train, y_test = train_test_split(features, final_data[target_columns], test_size=0.2, random_state=42)
+        # Display model results
+        st.subheader("Model Results")
+        for name, result in results.items():
+            st.write(f"{name} MSE: {result['mse']}")
 
-        # Linear Regression
-        lr_model = LinearRegression()
-        lr_model.fit(X_train, y_train)
-        lr_prediction = lr_model.predict([[user_input_iip, user_input_macro]])
-        st.write("Linear Regression Prediction:", lr_prediction)
+        # User input for prediction
+        st.sidebar.header("Make Predictions")
+        input_data = {}
+        for column in selected_columns:
+            input_data[column] = st.sidebar.number_input(f"Enter value for {column}", min_value=0)
 
-        # Random Forest Regression
-        rf_model = RandomForestRegressor()
-        rf_model.fit(X_train, y_train)
-        rf_prediction = rf_model.predict([[user_input_iip, user_input_macro]])
-        st.write("Random Forest Regression Prediction:", rf_prediction)
+        # User selects model for prediction
+        selected_model = st.sidebar.selectbox("Select Model for Prediction", list(results.keys()))
+        selected_model = results[selected_model]['model']
 
-        # Gradient Boosting Regression
-        gb_model = GradientBoostingRegressor()
-        gb_model.fit(X_train, y_train)
-        gb_prediction = gb_model.predict([[user_input_iip, user_input_macro]])
-        st.write("Gradient Boosting Regression Prediction:", gb_prediction)
+        # Make predictions
+        if st.sidebar.button("Make Predictions"):
+            prediction = make_predictions(selected_model, input_data)
+            st.subheader("Predicted Total Revenue/Income")
+            st.write(f"The predicted value is: {prediction[0]}")
 
-        # Display comparative chart
-        try:
-            fig, ax = plt.subplots()
-            ax.plot(final_data['Date'], final_data['Total Revenue'], label='Actual Total Revenue')
-            ax.plot(final_data['Date'], lr_model.predict(features), label='Linear Regression Prediction')
-            ax.plot(final_data['Date'], rf_model.predict(features), label='Random Forest Regression Prediction')
-            ax.plot(final_data['Date'], gb_model.predict(features), label='Gradient Boosting Regression Prediction')
-            ax.set_xlabel('Date')
-            ax.set_ylabel('Value')
-            ax.legend()
-            st.pyplot(fig)
-        except Exception as e:
-            st.error(f"Error displaying chart: {e}")
-else:
-    st.error("Data loading was unsuccessful. Please check your data files.")
+if __name__ == "__main__":
+    main()
