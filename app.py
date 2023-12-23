@@ -34,6 +34,9 @@ if uploaded_stock_data is not None:
         # Example for macro_data
         macro_selected_data = macro_data[selected_macro_columns]
 
+        # Convert the index to datetime (assuming the index is the date column)
+        macro_selected_data.index = pd.to_datetime(macro_selected_data.index)
+
         # Aggregate monthly data to quarterly
         macro_selected_data_quarterly = macro_selected_data.resample('Q').mean()
 
