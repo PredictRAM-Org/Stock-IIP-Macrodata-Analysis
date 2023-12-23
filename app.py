@@ -3,23 +3,37 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
-from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
 
 # Load stock income statement data
-stock_data = pd.read_json('stock_income_data.json')
+try:
+    stock_data = pd.read_json('stock_income_data.json')
+except Exception as e:
+    st.error(f"Error loading stock data: {e}")
 
 # Load IIP data
-iip_data = pd.read_csv('IIP.csv')
+try:
+    iip_data = pd.read_csv('IIP.csv')
+except Exception as e:
+    st.error(f"Error loading IIP data: {e}")
 
 # Load macro data
-macro_data = pd.read_excel('macro_data.xlsx')
+try:
+    macro_data = pd.read_excel('macro_data.xlsx')
+except Exception as e:
+    st.error(f"Error loading macro data: {e}")
 
 # Merge stock data with IIP data on date
-merged_data = pd.merge(stock_data, iip_data, on='Date', how='inner')
+try:
+    merged_data = pd.merge(stock_data, iip_data, on='Date', how='inner')
+except Exception as e:
+    st.error(f"Error merging stock and IIP data: {e}")
 
 # Merge merged_data with macro data on Reporting Date
-final_data = pd.merge(merged_data, macro_data, left_on='Date', right_on='Reporting Date', how='inner')
+try:
+    final_data = pd.merge(merged_data, macro_data, left_on='Date', right_on='Reporting Date', how='inner')
+except Exception as e:
+    st.error(f"Error merging final data: {e}")
 
 # Feature engineering - add more features based on relationships between economic indicators and income statements
 # ...
@@ -54,12 +68,15 @@ gb_prediction = gb_model.predict([[user_input_iip, user_input_macro]])
 st.write("Gradient Boosting Regression Prediction:", gb_prediction)
 
 # Display comparative chart
-fig, ax = plt.subplots()
-ax.plot(final_data['Date'], final_data['Total Revenue'], label='Actual Total Revenue')
-ax.plot(final_data['Date'], lr_model.predict(features), label='Linear Regression Prediction')
-ax.plot(final_data['Date'], rf_model.predict(features), label='Random Forest Regression Prediction')
-ax.plot(final_data['Date'], gb_model.predict(features), label='Gradient Boosting Regression Prediction')
-ax.set_xlabel('Date')
-ax.set_ylabel('Value')
-ax.legend()
-st.pyplot(fig)
+try:
+    fig, ax = plt.subplots()
+    ax.plot(final_data['Date'], final_data['Total Revenue'], label='Actual Total Revenue')
+    ax.plot(final_data['Date'], lr_model.predict(features), label='Linear Regression Prediction')
+    ax.plot(final_data['Date'], rf_model.predict(features), label='Random Forest Regression Prediction')
+    ax.plot(final_data['Date'], gb_model.predict(features), label='Gradient Boosting Regression Prediction')
+    ax.set_xlabel('Date')
+    ax.set_ylabel('Value')
+    ax.legend()
+    st.pyplot(fig)
+except Exception as e:
+    st.error(f"Error displaying chart: {e}")
