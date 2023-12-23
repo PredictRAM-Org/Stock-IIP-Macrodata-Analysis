@@ -11,7 +11,6 @@ def load_data(file_path):
     else:
         return pd.DataFrame()  # Return an empty DataFrame if file_path is None
 
-
 # Merge data
 def merge_data(company_data, iip_data, macro_data):
     merged_data = pd.merge(company_data, iip_data, on='Date', how='left')
