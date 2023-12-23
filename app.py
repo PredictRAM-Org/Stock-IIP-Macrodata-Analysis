@@ -1,89 +1,79 @@
+# Import necessary libraries
 import streamlit as st
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.metrics import mean_squared_error
+from io import StringIO
 
-# Load data
-def load_data(file_path):
-    if file_path is not None:
-        try:
-            return pd.read_excel(file_path)
-        except pd.errors.ParserError:
-            st.error("Error: Invalid Excel file. Please upload a valid Excel file.")
-            return pd.DataFrame()  # Return an empty DataFrame in case of an error
-    else:
-        return pd.DataFrame()  # Return an empty DataFrame if file_path is None
+# Step 1: Read macro_data.xlsx file
+macro_data = pd.read_excel('macro_data.xlsx')
 
-# Merge data
-def merge_data(company_data, iip_data, macro_data):
-    merged_data = pd.merge(company_data, iip_data, on='Date', how='left')
-    merged_data = pd.merge(merged_data, macro_data, on='Reporting Date', how='left')
-    return merged_data
+# Step 2: Read IIP.csv file
+iip_data = pd.read_csv('IIP.csv')
 
-# Train models
-def train_models(X_train, y_train):
-    models = {
-        'Linear Regression': LinearRegression(),
-        'Random Forest Regression': RandomForestRegressor(),
-        'Gradient Boosting Regression': GradientBoostingRegressor()
-    }
+# Step 3: Read stock data file
+stock_data = pd.read_excel('stock_data.xlsx')
 
-    results = {}
+# Step 4: Create a Streamlit app
+st.title("Economic Indicators Predictive Model")
 
-    for name, model in models.items():
-        model.fit(X_train, y_train)
-        results[name] = model
+# Step 5: Add widgets for user input
+selected_macro_columns = st.multiselect('Select columns from macro_data.xlsx:', macro_data.columns)
+selected_iip_columns = st.multiselect('Select columns from IIP.csv:', iip_data.columns)
+selected_stock_columns = st.multiselect('Select columns from stock_data.xlsx:', stock_data.columns)
 
-    return results
+# Step 6: Train predictive models (Linear Regression, Random Forest Regression, Gradient Boosting Regression)
+# Example for macro_data
+macro_selected_data = macro_data[selected_macro_columns]
+macro_target = stock_data['Total Revenue/Income']
 
-# Make predictions
-def make_predictions(model, input_data):
-    return model.predict([input_data])
+# Split data into training and testing sets
+macro_train_data, macro_test_data, macro_train_target, macro_test_target = train_test_split(
+    macro_selected_data, macro_target, test_size=0.2, random_state=42
+)
 
-# Streamlit app
-def main():
-    st.title("Revenue Prediction Dashboard")
+# Linear Regression
+linear_model = LinearRegression()
+linear_model.fit(macro_train_data, macro_train_target)
+linear_predictions = linear_model.predict(macro_test_data)
 
-    # Upload files
-    company_file = st.file_uploader("Upload Company Data (xlsx)", type=["xlsx"])
-    iip_file = st.file_uploader("Upload IIP Data (csv)", type=["csv"])
-    macro_file = st.file_uploader("Upload Macro Data (xlsx)", type=["xlsx"])
+# Random Forest Regression
+rf_model = RandomForestRegressor()
+rf_model.fit(macro_train_data, macro_train_target)
+rf_predictions = rf_model.predict(macro_test_data)
 
-    if company_file is not None and iip_file is not None and macro_file is not None:
-        # Load data
-        company_data = load_data(company_file)
-        iip_data = load_data(iip_file)
-        macro_data = load_data(macro_file)
+# Gradient Boosting Regression
+gb_model = GradientBoostingRegressor()
+gb_model.fit(macro_train_data, macro_train_target)
+gb_predictions = gb_model.predict(macro_test_data)
 
-        # Merge data
-        merged_data = merge_data(company_data, iip_data, macro_data)
+# Step 7: Compare models with income statement data
+# Compare models using Mean Squared Error
+linear_mse = mean_squared_error(macro_test_target, linear_predictions)
+rf_mse = mean_squared_error(macro_test_target, rf_predictions)
+gb_mse = mean_squared_error(macro_test_target, gb_predictions)
 
-        # Select columns for analysis
-        selected_columns = st.multiselect("Select Columns for Analysis", merged_data.columns)
+st.write(f'Linear Regression Mean Squared Error: {linear_mse}')
+st.write(f'Random Forest Regression Mean Squared Error: {rf_mse}')
+st.write(f'Gradient Boosting Regression Mean Squared Error: {gb_mse}')
 
-        # Train-test split
-        X = merged_data[selected_columns].dropna()
-        y = X.pop('Total Revenue/Income')
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Step 8: Add input options for upcoming values
+upcoming_iip_data = st.text_input('Enter upcoming values for selected IIP.csv columns:')
+upcoming_macro_data = st.text_input('Enter upcoming values for selected macro_data.xlsx columns:')
 
-        # Train models
-        models = train_models(X_train, y_train)
+# Step 9: Predict upcoming total revenue/income, total operating expense, EBITDA, and Net income
+# Example for predicting upcoming values
+upcoming_iip_data = pd.read_csv(StringIO(upcoming_iip_data))
+upcoming_macro_data = pd.read_excel(StringIO(upcoming_macro_data))
 
-        # User input for prediction
-        st.sidebar.header("Make Predictions")
-        input_data = {}
-        for column in selected_columns:
-            input_data[column] = st.sidebar.number_input(f"Enter value for {column}", min_value=0)
+# Use trained models to predict upcoming values
+upcoming_macro_predictions = linear_model.predict(upcoming_macro_data)
 
-        # User selects model for prediction
-        selected_model = st.sidebar.selectbox("Select Model for Prediction", list(models.keys()))
+# Step 10: Display comparative chart
+# Code for displaying chart goes here
 
-        # Make predictions
-        if st.sidebar.button("Make Predictions"):
-            prediction = make_predictions(models[selected_model], input_data)
-            st.subheader("Predicted Total Revenue/Income")
-            st.write(f"The predicted value is: {prediction[0]}")
+# Optionally, you can display the predicted values
+st.write("Predicted Total Revenue/Income:", upcoming_macro_predictions)
 
-if __name__ == "__main__":
-    main()
