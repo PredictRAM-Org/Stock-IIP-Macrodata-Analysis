@@ -34,6 +34,16 @@ except Exception as e:
     st.error(f"Error loading macro data: {e}")
     macro_data = pd.DataFrame()
 
+# Display information about available data
+st.write("Available Stock Data:")
+st.write(stock_data.head())
+
+st.write("Available IIP Data:")
+st.write(iip_data.head())
+
+st.write("Available Macro Data:")
+st.write(macro_data.head())
+
 # Check if data loading was successful before proceeding
 if not (stock_data.empty or iip_data.empty or macro_data.empty):
     # Merge stock data with IIP data on date
@@ -65,6 +75,10 @@ if not (stock_data.empty or iip_data.empty or macro_data.empty):
 
         # Split data into training and testing sets
         X_train, X_test, y_train, y_test = train_test_split(features, final_data[target_columns], test_size=0.2, random_state=42)
+
+        # Display information about training data
+        st.write("Training Data:")
+        st.write(X_train.head())
 
         # Linear Regression
         lr_model = LinearRegression()
