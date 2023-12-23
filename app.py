@@ -33,13 +33,17 @@ if uploaded_stock_data is not None:
         # Step 6: Train predictive models (Linear Regression, Random Forest Regression, Gradient Boosting Regression)
         # Example for macro_data
         macro_selected_data = macro_data[selected_macro_columns]
+
+        # Aggregate monthly data to quarterly
+        macro_selected_data_quarterly = macro_selected_data.resample('Q').mean()
+
         macro_target = stock_data['Total Revenue/Income']
 
         # Ensure the lengths of input arrays are consistent
-        if len(macro_selected_data) == len(macro_target):
+        if len(macro_selected_data_quarterly) == len(macro_target):
             # Split data into training and testing sets
             macro_train_data, macro_test_data, macro_train_target, macro_test_target = train_test_split(
-                macro_selected_data, macro_target, test_size=0.2, random_state=42
+                macro_selected_data_quarterly, macro_target, test_size=0.2, random_state=42
             )
 
             # Linear Regression
